@@ -1,4 +1,5 @@
-# project-consark
+# playwright-file-upload-download-tests
+
 
 This project automates the file upload and download workflow on [File.io](https://file.io) using [Playwright](https://playwright.dev/) with JavaScript.
 
