@@ -39,7 +39,7 @@ This project automates the file upload and download workflow on [File.io](https:
 ## Project structure
 
 ```
-project-consark/
+playwright-file-upload-download-tests/
 ├── pages/
 │   └── filePage.js              # Page object for upload/download flows
 ├── tests/
