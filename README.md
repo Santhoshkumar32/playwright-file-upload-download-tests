@@ -14,7 +14,7 @@ This project automates the file upload and download workflow on [File.io](https:
 
    ```bash
    git clone <repository-url>
-   cd project-consark
+   cd playwright-file-upload-download-tests
    ```
 
 2. **Install dependencies**:
