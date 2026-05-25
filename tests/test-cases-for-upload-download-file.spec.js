@@ -9,6 +9,7 @@ const IMAGE_FILE = "sample-image.jpg";
 const PDF_FILE = "sample-document.pdf";
 
 const EXPECTED_FILES = [CSV_FILE, IMAGE_FILE, PDF_FILE];
+const RECEIVER_EMAIL = process.env.QR_RECEIVER_EMAIL;
 
 test.describe("This testcase verifies the upload and download functionality", () => {
   let filePage;
@@ -23,6 +24,9 @@ test.describe("This testcase verifies the upload and download functionality", ()
   test.afterEach(async () => {
     if (downloadedFilePath) {
       await filePage.deleteDownloadedFile(downloadedFilePath);
+    }
+    if (downloadedQRPath) {
+      await filePage.deleteDownloadedFile(downloadedQRPath);
     }
   });
 
@@ -63,7 +67,7 @@ test.describe("This testcase verifies the upload and download functionality", ()
     })
 
     await test.step("Share the qr image downloaded in gmail", async () => {
-      await filePage.sendQRImageInGmail("santhoshk1836@gmail.com", downloadedQRPath);
+      await filePage.sendQRImageInGmail(RECEIVER_EMAIL, downloadedQRPath);
     })
   })
 });
