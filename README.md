@@ -7,7 +7,7 @@ End-to-end automation for file upload, download, and share flows on [File.io](ht
 - **Node.js** 18 or later ([download](https://nodejs.org/))
 - **npm** (included with Node.js)
 - A stable internet connection (tests run against the live site)
-- **Gmail credentials** (only required for the QR share-by-email test; see [Gmail setup](#gmail-setup))
+- A **`.env` file** with Gmail settings (required for the QR share-by-email test; see [Environment variables](#environment-variables))
 
 ## Setup
 
@@ -30,26 +30,47 @@ End-to-end automation for file upload, download, and share flows on [File.io](ht
    npx playwright install
    ```
 
-   To install only Chromium (the browser used by this project):
+   Chromium only (the browser used by this project):
 
    ```bash
    npx playwright install chromium
    ```
 
-4. **Configure environment variables** (for the Gmail test):
+4. **Create your `.env` file**:
 
    ```bash
    cp .env.example .env
    ```
 
-   Edit `.env` and set your sender account and [Gmail App Password](https://support.google.com/accounts/answer/185833):
+   Fill in all three variables (see [Environment variables](#environment-variables)). `.env` is gitignored—do not commit it.
 
-   ```
-   GMAIL_USER=your_sender_email@gmail.com
-   GMAIL_APP_PASSWORD=your_gmail_app_password
-   ```
+## Environment variables
 
-   `.env` is gitignored; never commit real credentials.
+Configuration lives in `.env` at the project root. Copy from `.env.example`:
+
+| Variable               | Description |
+| ---------------------- | ----------- |
+| `GMAIL_USER`           | Gmail address used to send the QR email (SMTP sender). |
+| `GMAIL_APP_PASSWORD`   | [Gmail App Password](https://support.google.com/accounts/answer/185833) for that account (not your normal login password). Spaces in the value are fine. |
+| `QR_RECEIVER_EMAIL`    | Inbox that receives the QR image attachment in the share test. |
+
+Example (placeholder values):
+
+```env
+GMAIL_USER="your_sender_email@gmail.com"
+GMAIL_APP_PASSWORD="your_gmail_app_password"
+QR_RECEIVER_EMAIL="receiver_email@example.com"
+```
+
+The QR test reads `QR_RECEIVER_EMAIL` from the environment; you do not need to edit the spec to change the recipient. `GmailHelper` loads `.env` via `dotenv` when tests run.
+
+**Gmail account requirements**
+
+1. Enable 2-Step Verification on the Google account used for `GMAIL_USER`.
+2. Create an App Password for “Mail”.
+3. Use that App Password as `GMAIL_APP_PASSWORD`.
+
+If any variable is missing or wrong, the QR email step will fail.
 
 ## Project structure
 
@@ -64,9 +85,10 @@ End-to-end automation for file upload, download, and share flows on [File.io](ht
 │   └── sample-image.jpg
 ├── utils/
 │   ├── downloadHelper.js        # ZIP download, verification, URL-based saves
-│   └── gmailHelper.js           # Send QR image via Gmail (Nodemailer)
+│   └── gmailHelper.js           # Send QR image via Gmail (Nodemailer + dotenv)
 ├── downloads/                   # Created at runtime (gitignored)
-├── .env.example                 # Template for Gmail credentials
+├── .env                         # Local secrets (gitignored)
+├── .env.example                 # Template for required variables
 ├── playwright.config.js
 └── package.json
 ```
@@ -84,9 +106,9 @@ End-to-end automation for file upload, download, and share flows on [File.io](ht
 ### 2. Download QR and share via Gmail
 
 - Uploads a single CSV and verifies **1 File** in the UI.
-- Opens **Share**, downloads the QR image from the page (saved as `downloaded_image.svg` in `downloads/`).
-- Sends the QR image as an email attachment using Gmail (`GmailHelper` + credentials from `.env`).
-- Update the recipient address in the spec if you want mail sent to a different inbox.
+- Opens **Share**, downloads the QR image (saved as `downloaded_image.svg` in `downloads/`).
+- Emails the QR image to `QR_RECEIVER_EMAIL` using `GMAIL_USER` / `GMAIL_APP_PASSWORD`.
+- Removes both ZIP and QR downloads in `afterEach` when present.
 
 ## Running tests
 
@@ -96,7 +118,7 @@ Run all tests:
 npx playwright test
 ```
 
-Run a single spec file:
+Run the spec file:
 
 ```bash
 npx playwright test tests/test-cases-for-upload-download-file.spec.js
@@ -109,13 +131,13 @@ npx playwright test -g "upload and download functionality"
 npx playwright test -g "download the qr"
 ```
 
-Run with the Playwright UI (interactive):
+Interactive UI:
 
 ```bash
 npx playwright test --ui
 ```
 
-Run in headed mode (browser visible):
+Headed mode (visible browser):
 
 ```bash
 npx playwright test --headed
@@ -123,21 +145,19 @@ npx playwright test --headed
 
 ## Test report
 
-After a run, open the HTML report:
+Open the HTML report after a run:
 
 ```bash
 npx playwright show-report
 ```
 
-Failed tests retain traces when configured (`trace: 'retain-on-failure'` in `playwright.config.js`). View a trace:
+Failed tests keep traces (`trace: 'retain-on-failure'` in `playwright.config.js`):
 
 ```bash
 npx playwright show-trace test-results/<run-folder>/trace.zip
 ```
 
-## Configuration
-
-Key settings in `playwright.config.js`:
+## Playwright configuration
 
 | Setting            | Value                             |
 | ------------------ | --------------------------------- |
@@ -151,33 +171,23 @@ Key settings in `playwright.config.js`:
 | Reporter           | HTML                              |
 | Parallelism        | `fullyParallel: true`             |
 
-Downloaded files are saved under `downloads/` in the project root (created automatically during tests).
-
-## Gmail setup
-
-The QR share test uses [Nodemailer](https://nodemailer.com/) with Gmail SMTP:
-
-1. Use a Google account with 2-Step Verification enabled.
-2. Create an **App Password** for “Mail” (not your regular account password).
-3. Copy `.env.example` to `.env` and fill in `GMAIL_USER` and `GMAIL_APP_PASSWORD`.
-4. Ensure the recipient email in `tests/test-cases-for-upload-download-file.spec.js` is correct for your environment.
-
-If Gmail variables are missing or invalid, the QR email step will fail.
+Artifacts are written under `downloads/` (created automatically; gitignored).
 
 ## Troubleshooting
 
 - **Browsers not found** — Run `npx playwright install` again.
-- **Timeouts** — Upload and download depend on network speed; config uses 30–120s timeouts. Retry on a slow connection.
-- **Redirect not detected** — The first upload must redirect to a LimeWire URL; check connectivity and that File.io is reachable.
-- **Gmail / SMTP errors** — Confirm App Password, 2FA, and that `GMAIL_USER` matches the account that created the password.
-- **Stale report server** — If `npx playwright show-report` fails because port 9323 is in use, stop the other process or use `npx playwright show-report --port 9324`.
-- **Leftover downloads** — Delete the `downloads/` folder manually if a test exits before cleanup.
+- **Timeouts** — Upload/download depends on network speed; config uses 30–120s timeouts.
+- **Redirect not detected** — First upload must reach a LimeWire URL; check that File.io is reachable.
+- **Gmail / SMTP errors** — Verify App Password, 2FA, and that `GMAIL_USER` owns the App Password.
+- **`QR_RECEIVER_EMAIL` undefined** — Ensure `.env` exists in the project root and includes `QR_RECEIVER_EMAIL`; restart the test run after editing `.env`.
+- **Stale report server** — If port 9323 is busy: `npx playwright show-report --port 9324`.
+- **Leftover downloads** — Delete `downloads/` manually if a test exits before cleanup.
 
 ## Dependencies
 
-| Package            | Purpose                                      |
-| ------------------ | -------------------------------------------- |
-| `@playwright/test` | Test runner, browser automation, assertions  |
-| `adm-zip`          | Verify contents of downloaded ZIP archives   |
-| `dotenv`           | Load Gmail credentials from `.env`           |
-| `nodemailer`       | Send QR image attachments via Gmail SMTP     |
+| Package            | Purpose                                     |
+| ------------------ | ------------------------------------------- |
+| `@playwright/test` | Test runner, browser automation, assertions |
+| `adm-zip`          | Verify downloaded ZIP contents              |
+| `dotenv`           | Load `.env` for Gmail and receiver email    |
+| `nodemailer`       | Send QR attachments via Gmail SMTP            |
